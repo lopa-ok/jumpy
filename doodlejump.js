@@ -11,6 +11,12 @@ const PLAYER_WIDTH = 30;
 const PLAYER_HEIGHT = 30;
 const PLAYER_COLOR = 'red';
 const PLATFORM_COLOR = 'green';
+const SCORE_COLOR = 'black';
+const GAME_OVER_COLOR = 'red';
+const GAME_OVER_FONT = '50px "Press Start 2P"';
+const BUTTON_COLOR = 'blue';
+const BUTTON_TEXT_COLOR = 'white';
+const BUTTON_FONT = '20px "Press Start 2P"';
 
 const BIG_PLATFORM_WIDTH = canvas.width;
 const BIG_PLATFORM_HEIGHT = 50;
@@ -35,6 +41,11 @@ let cameraOffset = {
     x: canvas.width / 2 - player.x,
     y: canvas.height / 2 - player.y
 };
+
+let score = 0;
+let lastPlatformY = canvas.height - BIG_PLATFORM_HEIGHT;
+let gameOver = false; 
+let restartButton = { x: 0, y: 0, width: 200, height: 50 }; 
 
 function createInitialPlatforms() {
     platforms = [];
@@ -74,6 +85,35 @@ function drawPlatforms() {
     });
 }
 
+function drawScore() {
+    ctx.fillStyle = SCORE_COLOR;
+    ctx.font = '30px "Press Start 2P"'; 
+    ctx.fillText('Score: ' + score, 40, 50); 
+}
+
+function drawGameOver() {
+    ctx.fillStyle = GAME_OVER_COLOR;
+    ctx.font = GAME_OVER_FONT; 
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Over', canvas.width / 2 - cameraOffset.x, canvas.height / 2);
+
+    
+    ctx.font = '30px "Press Start 2P"';
+    ctx.fillText('Final Score: ' + score, canvas.width / 2 - cameraOffset.x, canvas.height / 2 + 50);
+
+    
+    restartButton.x = canvas.width / 2 - 100 - cameraOffset.x; 
+    restartButton.y = canvas.height / 2 + 100; 
+
+    ctx.fillStyle = BUTTON_COLOR;
+    ctx.fillRect(restartButton.x, restartButton.y, restartButton.width, restartButton.height);
+
+    ctx.fillStyle = BUTTON_TEXT_COLOR;
+    ctx.font = BUTTON_FONT;
+    ctx.textAlign = 'center';
+    ctx.fillText('Restart', restartButton.x + restartButton.width / 2, restartButton.y + 35);
+}
+
 function updatePlayer() {
     player.dy += GRAVITY;
     player.x += player.dx;
@@ -83,8 +123,9 @@ function updatePlayer() {
     if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
     if (player.y > canvas.height) {
-        player.y = canvas.height;
-        player.dy = 0;
+        gameOver = true; 
+        player.dy = 0; 
+        return;
     }
 
     platforms.forEach(platform => {
@@ -97,6 +138,10 @@ function updatePlayer() {
         ) {
             player.y = platform.y - player.height;
             player.dy = JUMP_STRENGTH;
+            if (platform.y < lastPlatformY) {
+                score++; 
+                lastPlatformY = platform.y;
+            }
         }
     });
 
@@ -130,6 +175,11 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawPlatforms();
     drawPlayer();
+    drawScore(); // Draw the score
+    if (gameOver) {
+        drawGameOver(); // Draw the game over message
+        return; // Stop the game loop
+    }
     updatePlayer();
     requestAnimationFrame(draw);
 }
@@ -144,8 +194,39 @@ function handleKeyUp(e) {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') player.dx = 0;
 }
 
+
+
+function handleCanvasClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    if (
+        gameOver &&
+        clickX >= restartButton.x &&
+        clickX <= restartButton.x + restartButton.width &&
+        clickY >= restartButton.y &&
+        clickY <= restartButton.y + restartButton.height
+    ) {
+        restartGame();
+    }
+}
+
+function restartGame() {
+    gameOver = false;
+    score = 0;
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+    player.dy = 0;
+    player.dx = 0;
+    lastPlatformY = canvas.height - BIG_PLATFORM_HEIGHT;
+    createInitialPlatforms();
+    draw();
+}
+
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup', handleKeyUp);
+canvas.addEventListener('click', handleCanvasClick);
 
 createInitialPlatforms();
 draw();

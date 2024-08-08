@@ -28,8 +28,15 @@ let player = {
 
 let platforms = [];
 const platformCount = 10;
+const platformGenerationThreshold = canvas.height; // When to generate new platforms
 
-function createPlatforms() {
+// Initialize the camera offset
+let cameraOffset = {
+    x: canvas.width / 2 - player.x,
+    y: canvas.height / 2 - player.y
+};
+
+function createInitialPlatforms() {
     platforms = [];
     // Add the big starting platform in the middle
     platforms.push({
@@ -41,7 +48,6 @@ function createPlatforms() {
 
     // Add other platforms at decreasing heights
     let lastX = (canvas.width - PLATFORM_WIDTH) / 2; // Start with the middle of the canvas
-
     for (let i = 0; i < platformCount; i++) {
         platforms.push({
             x: lastX,
@@ -58,13 +64,13 @@ function createPlatforms() {
 
 function drawPlayer() {
     ctx.fillStyle = PLAYER_COLOR;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillRect(player.x - cameraOffset.x, player.y - cameraOffset.y, player.width, player.height);
 }
 
 function drawPlatforms() {
     ctx.fillStyle = PLATFORM_COLOR;
     platforms.forEach(platform => {
-        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+        ctx.fillRect(platform.x - cameraOffset.x, platform.y - cameraOffset.y, platform.width, platform.height);
     });
 }
 
@@ -93,6 +99,31 @@ function updatePlayer() {
             player.dy = JUMP_STRENGTH;
         }
     });
+
+    // Update camera offset based on player's position
+    cameraOffset.x = player.x - canvas.width / 2 + player.width / 2;
+    cameraOffset.y = player.y - canvas.height / 2 + player.height / 2;
+
+    // Recycle platforms if they go out of view
+    platforms.forEach((platform, index) => {
+        if (platform.y > player.y + canvas.height) {
+            platforms.splice(index, 1); // Remove platform
+            addPlatformAbove();
+        }
+    });
+}
+
+function addPlatformAbove() {
+    const lastPlatform = platforms[platforms.length - 1];
+    const newPlatformX = lastPlatform.x + PLATFORM_SPACING_X * (Math.random() > 0.5 ? 1 : -1);
+    const newPlatformY = lastPlatform.y - PLATFORM_SPACING_Y;
+
+    platforms.push({
+        x: Math.max(0, Math.min(canvas.width - PLATFORM_WIDTH, newPlatformX)), // Ensure it stays within bounds
+        y: newPlatformY,
+        width: PLATFORM_WIDTH,
+        height: PLATFORM_HEIGHT,
+    });
 }
 
 function draw() {
@@ -116,5 +147,5 @@ function handleKeyUp(e) {
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup', handleKeyUp);
 
-createPlatforms();
+createInitialPlatforms();
 draw();
